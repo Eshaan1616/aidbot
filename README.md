@@ -1,238 +1,102 @@
-🚀 AidBot
-Grounded AI Customer Support Platform
+# AidBot
 
-AidBot is a retrieval-augmented, document-grounded AI support system built for SaaS and enterprise environments where accuracy, explainability, and control are non-negotiable.
+AidBot is a grounded support assistant with:
 
-❗ Unlike generic AI chatbots, AidBot does not rely on pretrained knowledge.
-Every response is generated only from uploaded documentation via retrieval.
+- FastAPI for upload, indexing, and chat APIs
+- React + Vite frontend for document and chat workflows
+- ChromaDB as the persistent vector database
+- Local sentence-transformers embeddings for semantic retrieval
+- PydanticAI for answer generation using retrieved context only
 
-This makes AidBot suitable for customer support, internal enablement, and regulated domains.
+## What Changed
 
-🎯 Core Design Principle
-No grounding → no answer
+The original hackathon version used JSON-backed keyword overlap and optimistic confidence labels. This version now:
 
-The agent never answers from memory
+- stores chunks in a real vector database instead of `data/vector_store.json`
+- generates semantic embeddings locally for chunk indexing and query search
+- exposes retrieval score, embedding model, and vector backend in the API
+- derives confidence from retrieval similarity instead of hardcoded labels
+- fixes broken `.env.example` files
+- fixes the frontend API base URL configuration bug
+- tightens upload filename handling and CORS configuration
 
-All responses are derived from retrieved document chunks
+## Backend Setup
 
-If documentation does not contain the answer, the system explicitly signals escalation
+Create a `.env` file in the repo root with values like:
 
-AidBot is not a chatbot — it is a knowledge-grounded enterprise support system.
+```env
+OPENROUTER_API_KEY=your-openrouter-api-key
+LLM_MODEL=openrouter:meta-llama/llama-3.1-8b-instruct
+VECTOR_DB_PATH=./data/chroma
+ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+```
 
-🏗️ System Architecture
-User Question
-     ↓
-Retrieval (Top-K document chunks)
-     ↓
-Grounded Agent (PydanticAI)
-     ↓
-Structured Output (SupportAnswer schema)
-     ↓
-API Response (answer + confidence + sources)
+Then install and run:
 
-🧠 Key Components
-1️⃣ Agent
-
-app/agent/support_agent.py
-
-Built using PydanticAI
-
-Strict system prompt enforces documentation-only answers
-
-Agent only sees retrieved chunks as context
-
-Produces validated, structured output
-
-2️⃣ Retrieval Layer
-
-app/ingestion/store.py
-
-Keyword-based retrieval (intentionally dependency-light)
-
-Top-K retrieval executed for every query
-
-No answer is generated without retrieved context
-
-3️⃣ Structured Output
-
-app/agent/schema.py
-
-SupportAnswer schema enforces output shape
-
-Fields include:
-
-answer
-
-confidence (HIGH / MEDIUM / LOW / NONE)
-
-sources
-
-requires_escalation
-
-Prevents hallucination and unstructured responses
-
-4️⃣ Document Processing
-
-Sentence-based chunking with overlap
-
-Metadata tracking (source, chunk id)
-
-Persistent JSON-based storage (upgrade-ready)
-
-📁 Project Structure
-aidbot-project/
-├── app/
-│   ├── agent/
-│   │   ├── schema.py          # Pydantic schemas (SupportAnswer)
-│   │   └── support_agent.py   # Grounded PydanticAI agent ⭐
-│   ├── ingestion/
-│   │   ├── loader.py          # Document loading
-│   │   ├── chunker.py         # Text chunking
-│   │   ├── store.py           # Retrieval layer
-│   │   └── embeddings.py     # Upgrade stub (semantic search)
-│   ├── api/
-│   │   ├── upload.py          # Document upload endpoints
-│   │   └── chat.py            # Agent execution endpoint ⭐
-│   └── main.py                # FastAPI application
-│
-├── frontend/
-│   └── src/
-│       └── components/
-│           ├── AidBot.jsx
-│           ├── Landing.jsx
-│           ├── SystemOverview.jsx
-│           ├── AnswerCard.jsx
-│           ├── Documents.jsx
-│           └── Status.jsx
-│
-├── requirements.txt
-└── README.md
-
-🌐 Frontend Capabilities
-
-The frontend is designed to expose system behavior, not hide it.
-
-Users can clearly see:
-
-Whether documentation has been uploaded
-
-How much knowledge is indexed
-
-When the agent can or cannot answer
-
-Confidence and escalation signals
-
-This transparency is critical for enterprise trust.
-
-🔌 API Endpoints
-📄 Upload Documentation
-POST /api/upload
-
-{
-  "filename": "support_docs.txt",
-  "chunks_created": 12,
-  "message": "Successfully processed support_docs.txt"
-}
-
-💬 Ask a Question
-POST /api/chat
-
-{
-  "message": "How do I reset my password?"
-}
-
-{
-  "answer": "To reset your password, go to Settings > Security...",
-  "confidence": "high",
-  "sources": ["user_guide.md"],
-  "requires_escalation": false,
-  "retrieved_chunks": 3
-}
-
-📊 Document Status
-GET /api/documents
-
-
-Returns document count, chunk count, and sources.
-
-❤️ Health Check
-GET /health
-
-🚀 Running the Platform
-Backend
-python -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
+```powershell
 pip install -r requirements.txt
 uvicorn app.main:app --reload
+```
 
-Frontend
+## Frontend Setup
+
+Create `frontend/.env`:
+
+```env
+VITE_API_URL=http://localhost:8000
+```
+
+Then run:
+
+```powershell
 cd frontend
 npm install
 npm run dev
+```
 
-🏢 SaaS & Enterprise Use Cases
-📡 Telecom & ISP Platforms
+## Deployment Setup
 
-Reduce customer support load
+For an interview-safe deployment, this project is best split into:
 
-Answer billing, plan, and policy questions accurately
+- frontend on Vercel
+- backend on Render with persistent disk
 
-Improve first-contact resolution
+Why: the backend stores uploads, Chroma data, users, sessions, and conversations on disk. That works well on a persistent backend host, but is not a good fit for Vercel serverless functions.
 
-Reduce customer churn caused by misinformation
+### Backend on Render
 
-🧩 Customer Support SaaS
+This repo now includes [render.yaml](C:\Users\eshaa\OneDrive\Desktop\aidbot-project\render.yaml) for the backend service. It configures:
 
-Replace static FAQs with grounded AI assistance
+- `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+- a persistent disk mounted at `/var/data`
+- env-backed paths for uploads, vectors, users, sessions, and conversations
 
-Ensure consistent answers across support channels
+Important:
 
-Assist support agents with verified responses
+- set `OPENROUTER_API_KEY` in Render
+- replace `ALLOWED_ORIGINS` with your real Vercel frontend URL
 
-🧱 B2B SaaS Products
+### Frontend on Vercel
 
-Product documentation assistants
+Deploy the [frontend](C:\Users\eshaa\OneDrive\Desktop\aidbot-project\frontend) directory as the Vercel project root and set:
 
-API and integration support bots
+```env
+VITE_API_URL=https://your-backend.onrender.com
+```
 
-Internal enablement tools for sales and onboarding teams
+The frontend also includes [vercel.json](C:\Users\eshaa\OneDrive\Desktop\aidbot-project\frontend\vercel.json) so Vercel detects it as a Vite app cleanly.
 
-⚖️ Regulated Domains
+## API Endpoints
 
-Finance, healthcare, legal, compliance
+- `POST /api/upload` uploads and indexes `.txt` and `.md` files
+- `GET /api/documents` returns indexed document stats plus vector backend metadata
+- `DELETE /api/documents` clears the active collection
+- `POST /api/chat` runs retrieval + grounded generation
+- `GET /health` returns API health and current vector indexing status
 
-Environments where hallucination is unacceptable
+## Notes
 
-Systems requiring traceability and auditability
-
-🔒 Production Considerations
-
-File type validation on upload
-
-Size limits (configurable)
-
-Full Pydantic validation across boundaries
-
-Async-safe FastAPI routes
-
-Clear separation of ingestion, retrieval, and generation
-
-🔄 Upgrade Paths
-
-Current implementation intentionally avoids heavy dependencies.
-
-Planned / Easy upgrades:
-
-Semantic search (sentence-transformers)
-
-Vector databases (Pinecone, Qdrant, Weaviate)
-
-Multi-turn conversation memory
-
-PDF and multimodal document support
-
-Multi-tenant SaaS deployment
-
-📜 License
-
-MIT
+- Existing `data/vector_store.json` is now legacy and no longer used.
+- Embeddings run locally with `all-MiniLM-L6-v2`, so no embedding API key is required.
+- Uploaded documents and vector data are local development state and should not be treated as source-controlled truth.
+- There is no production database in this repo; persistence is file-based by design.
