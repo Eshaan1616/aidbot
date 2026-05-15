@@ -54,38 +54,6 @@ npm install
 npm run dev
 ```
 
-## Deployment Setup
-
-For an interview-safe deployment, this project is best split into:
-
-- frontend on Vercel
-- backend on Render with persistent disk
-
-Why: the backend stores uploads, Chroma data, users, sessions, and conversations on disk. That works well on a persistent backend host, but is not a good fit for Vercel serverless functions.
-
-### Backend on Render
-
-This repo now includes [render.yaml](C:\Users\eshaa\OneDrive\Desktop\aidbot-project\render.yaml) for the backend service. It configures:
-
-- `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-- a persistent disk mounted at `/var/data`
-- env-backed paths for uploads, vectors, users, sessions, and conversations
-
-Important:
-
-- set `OPENROUTER_API_KEY` in Render
-- replace `ALLOWED_ORIGINS` with your real Vercel frontend URL
-
-### Frontend on Vercel
-
-Deploy the [frontend](C:\Users\eshaa\OneDrive\Desktop\aidbot-project\frontend) directory as the Vercel project root and set:
-
-```env
-VITE_API_URL=https://your-backend.onrender.com
-```
-
-The frontend also includes [vercel.json](C:\Users\eshaa\OneDrive\Desktop\aidbot-project\frontend\vercel.json) so Vercel detects it as a Vite app cleanly.
-
 ## API Endpoints
 
 - `POST /api/upload` uploads and indexes `.txt` and `.md` files
